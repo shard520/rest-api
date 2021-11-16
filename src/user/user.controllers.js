@@ -5,7 +5,7 @@ exports.addUser = async (req, res) => {
     const newUser = new User(req.body);
 
     await newUser.save();
-    res.status(200).send({ message: 'Success' });
+    res.status(200).send({ message: 'Success', newUser });
   } catch (err) {
     console.error('💥 💥', err);
     res
@@ -14,11 +14,23 @@ exports.addUser = async (req, res) => {
   }
 };
 
+exports.login = async (req, res) => {
+  try {
+    res.status(200).send(req.user);
+  } catch (err) {
+    console.error('💥 💥', err);
+    res
+      .status(500)
+      .send({ message: 'Something went wrong, check server logs.' });
+  }
+};
+
 exports.listUsers = async (req, res) => {
   try {
     const userList = await User.find({});
+    const usernames = userList.map(user => user.username);
 
-    res.status(200).send(userList);
+    res.status(200).send(usernames);
   } catch (err) {
     console.error('💥 💥', err);
     res
