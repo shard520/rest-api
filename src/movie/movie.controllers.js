@@ -1,10 +1,10 @@
-const User = require('./user.model');
+const Movie = require('./movie.model');
 
-exports.addUser = async (req, res) => {
+exports.addMovie = async (req, res) => {
   try {
-    const newUser = new User(req.body);
+    const newMovie = new Movie(req.body);
 
-    await newUser.save();
+    await newMovie.save();
     res.status(200).send({ message: 'Success' });
   } catch (err) {
     console.error('💥 💥', err);
@@ -14,11 +14,11 @@ exports.addUser = async (req, res) => {
   }
 };
 
-exports.listUsers = async (req, res) => {
+exports.listMovies = async (req, res) => {
   try {
-    const userList = await User.find({});
+    const movieList = await Movie.find({});
 
-    res.status(200).send(userList);
+    res.status(200).send(movieList);
   } catch (err) {
     console.error('💥 💥', err);
     res
@@ -27,15 +27,16 @@ exports.listUsers = async (req, res) => {
   }
 };
 
-exports.updateUser = async (req, res) => {
+exports.updateMovie = async (req, res) => {
   try {
-    const doc = await User.findOne({ username: req.body.update.username });
+    const doc = await Movie.findOne({ title: req.body.update.title });
 
     const { newInfo } = req.body;
 
-    if (newInfo.username) doc.username = newInfo.username;
-    if (newInfo.email) doc.email = newInfo.email;
-    if (newInfo.password) doc.password = newInfo.password;
+    if (newInfo.title) doc.title = newInfo.title;
+    if (newInfo.actor) doc.actor = newInfo.actor;
+    if (newInfo.genre) doc.genre = newInfo.genre;
+    if (newInfo.rating) doc.rating = newInfo.rating;
 
     await doc.save();
 
@@ -48,9 +49,9 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-exports.deleteUser = async (req, res) => {
+exports.deleteMovie = async (req, res) => {
   try {
-    await User.deleteOne(req.body);
+    await Movie.deleteOne(req.body);
     res.status(200).send({ message: 'Deletion successful' });
   } catch (err) {
     console.error('💥 💥', err);
