@@ -1,4 +1,6 @@
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
 const User = require('../user/user.model');
 
 exports.hashPassword = async (req, res, next) => {
@@ -22,6 +24,21 @@ exports.comparePasswords = async (req, res, next) => {
     } else {
       throw new Error();
     }
+  } catch (err) {
+    console.error('💥 💥', err);
+    res.status(500).send({ message: 'Check server error logs.' });
+  }
+};
+
+exports.tokenAuth = async (req, res, next) => {
+  try {
+    const tokenObj = jwt.verify(
+      req.header('Authorization').replace('Bearer ', ''),
+      process.env.SECRET
+    );
+    req.user = await User.findOne({ _id: tokenObj._id });
+    if (!req.user) throw new Error();
+    next();
   } catch (err) {
     console.error('💥 💥', err);
     res.status(500).send({ message: 'Check server error logs.' });
