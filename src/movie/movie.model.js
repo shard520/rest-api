@@ -1,25 +1,24 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const sequelize = require('../MySQL/connection');
 
-const movieSchema = new mongoose.Schema({
-  title: {
-    type: String,
+const Movie = sequelize.define('Movie', {
+  movieTitle: {
+    type: DataTypes.STRING,
+    allowNull: false,
     unique: true,
-    required: true,
-  },
-  actor: {
-    type: String,
-    default: 'Not specified',
-  },
-  genre: {
-    type: String,
-    default: 'Not specified',
   },
   rating: {
-    type: Number,
-    max: 10,
+    type: DataTypes.INTEGER,
+    validate: {
+      max: 10,
+    },
+  },
+  postedBy: {
+    type: DataTypes.STRING,
+  },
+  updatedBy: {
+    type: DataTypes.STRING,
   },
 });
-
-const Movie = mongoose.model('Movie', movieSchema);
 
 module.exports = Movie;

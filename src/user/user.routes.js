@@ -4,10 +4,14 @@ const {
   listUsers,
   updateUser,
   deleteUser,
+  login,
 } = require('./user.controllers');
+const { hashPassword, comparePasswords, tokenAuth } = require('../middleware');
 const userRouter = Router();
 
-userRouter.post('/user', addUser);
+userRouter.post('/user', hashPassword, addUser);
+userRouter.post('/login', comparePasswords, login);
+userRouter.get('/token', tokenAuth, login);
 
 userRouter.get('/user', listUsers);
 
