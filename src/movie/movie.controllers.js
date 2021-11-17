@@ -62,7 +62,11 @@ exports.listMovies = async (req, res) => {
     const movies = await Movie.findAll({ include: [Actor, Genre] });
 
     if (movies.length < 1) {
-      console.log('No movies found, please add some movies to the DB.');
+      res
+        .status(500)
+        .send({
+          message: 'No movies found, please add some movies to the DB.',
+        });
       return;
     }
 
@@ -85,13 +89,46 @@ exports.findMovie = async (req, res) => {
     });
 
     if (!foundMovie) {
-      console.log('Movie not found.');
+      res.status(500).send({ message: 'Movie not found.' });
       return;
     }
 
     const movie = formatResponse(foundMovie);
 
     res.status(200).send(movie);
+  } catch (err) {
+    console.error('💥 💥', err);
+    res
+      .status(500)
+      .send({ message: 'Something went wrong, check server logs.' });
+  }
+};
+
+exports.updateMovie = async (req, res) => {
+  try {
+    // TODO
+  } catch (err) {
+    console.error('💥 💥', err);
+    res
+      .status(500)
+      .send({ message: 'Something went wrong, check server logs.' });
+  }
+};
+
+exports.deleteMovie = async (req, res) => {
+  try {
+    const deleted = await Movie.destroy({
+      where: { movieTitle: req.body.title },
+    });
+
+    if (!deleted) {
+      res
+        .status(500)
+        .send({ message: 'Deletion unsuccessful, please try again.' });
+      return;
+    }
+
+    res.status(200).send({ message: 'Movie deleted successfully.' });
   } catch (err) {
     console.error('💥 💥', err);
     res
