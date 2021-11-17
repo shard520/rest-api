@@ -2,15 +2,17 @@ const { Router } = require('express');
 const { tokenAuth } = require('../middleware');
 const {
   addMovie,
-  // listMovies,
+  listMovies,
+  findMovie,
   // updateMovie,
   // deleteMovie,
 } = require('./movie.controllers');
 const movieRouter = Router();
 
 movieRouter.post('/movie', tokenAuth, addMovie);
+movieRouter.post('/findMovie', findMovie);
 
-// movieRouter.get('/movie', listMovies);
+movieRouter.get('/movie', listMovies);
 
 // movieRouter.patch('/movie', updateMovie);
 

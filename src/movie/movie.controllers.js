@@ -56,3 +56,69 @@ exports.addMovie = async (req, res) => {
       .send({ message: 'Something went wrong, check server logs.' });
   }
 };
+
+exports.listMovies = async (req, res) => {
+  try {
+    const movies = await Movie.findAll({ include: [Actor, Genre] });
+
+    if (movies.length < 1) {
+      console.log('No movies found, please add some movies to the DB.');
+      return;
+    }
+
+    const movieList = movies.map(movie => formatResponse(movie));
+
+    res.status(200).send(movieList);
+  } catch (err) {
+    console.error('💥 💥', err);
+    res
+      .status(500)
+      .send({ message: 'Something went wrong, check server logs.' });
+  }
+};
+
+exports.findMovie = async (req, res) => {
+  try {
+    const foundMovie = await Movie.findOne({
+      where: { movieTitle: req.body.title },
+      include: [Actor, Genre],
+    });
+
+    if (!foundMovie) {
+      console.log('Movie not found.');
+      return;
+    }
+
+    const movie = formatResponse(foundMovie);
+
+    res.status(200).send(movie);
+  } catch (err) {
+    console.error('💥 💥', err);
+    res
+      .status(500)
+      .send({ message: 'Something went wrong, check server logs.' });
+  }
+};
+
+const formatResponse = movie => {
+  let actors = [];
+  let genres = [];
+
+  const movieObj = {
+    title: movie.movieTitle,
+    rating: movie.rating,
+    postedBy: movie.postedBy,
+    updatedBy: movie.updatedBy,
+  };
+
+  if (movie.Actors) {
+    movie.Actors.forEach(actor => actors.push(actor.actorName));
+    movieObj.actors = actors;
+  }
+  if (movie.Genres) {
+    movie.Genres.forEach(genre => genres.push(genre.genreName));
+    movieObj.genres = genres;
+  }
+
+  return movieObj;
+};
