@@ -1,62 +1,58 @@
 const Movie = require('./movie.model');
+const Actor = require('../actor/actor.model');
+const Genre = require('../genre/genre.model');
 
 exports.addMovie = async (req, res) => {
   try {
-    const newMovie = new Movie(req.body);
+    const movieObj = {
+      movieTitle: req.body.title,
+      postedBy: req.user.username,
+      updatedBy: req.user.username,
+    };
 
-    await newMovie.save();
-    res.status(200).send({ message: 'Success' });
+    let actors, genres;
+
+    if (req.body.actors) {
+      actors = await Promise.all(
+        req.body.actors.map(actor =>
+          Actor.findOrCreate({
+            where: {
+              actorName: actor,
+            },
+          })
+        )
+      );
+    }
+
+    if (req.body.genres) {
+      genres = await Promise.all(
+        req.body.genres.map(genre =>
+          Genre.findOrCreate({
+            where: {
+              genreName: genre,
+            },
+          })
+        )
+      );
+    }
+
+    if (req.body.rating) movieObj.rating = req.body.rating;
+
+    const movie = await Movie.create(movieObj);
+
+    if (actors) {
+      actors.forEach(actor => movie.addActor(actor[0]));
+    }
+
+    if (genres) {
+      genres.forEach(genre => movie.addGenre(genre[0]));
+    }
+
+    res.status(200).send({ message: 'Movie created successfully.' });
   } catch (err) {
     console.error('💥 💥', err);
     res
-      .status(418)
-      .send({ message: 'Something went wrong, check server logs.' });
-  }
-};
-
-exports.listMovies = async (req, res) => {
-  try {
-    const movieList = await Movie.find({});
-
-    res.status(200).send(movieList);
-  } catch (err) {
-    console.error('💥 💥', err);
-    res
-      .status(418)
-      .send({ message: 'Something went wrong, check server logs.' });
-  }
-};
-
-exports.updateMovie = async (req, res) => {
-  try {
-    const doc = await Movie.findOne({ title: req.body.update.title });
-
-    const { newInfo } = req.body;
-
-    if (newInfo.title) doc.title = newInfo.title;
-    if (newInfo.actor) doc.actor = newInfo.actor;
-    if (newInfo.genre) doc.genre = newInfo.genre;
-    if (newInfo.rating) doc.rating = newInfo.rating;
-
-    await doc.save();
-
-    res.status(200).send({ message: 'Update successful' });
-  } catch (err) {
-    console.error('💥 💥', err);
-    res
-      .status(418)
-      .send({ message: 'Something went wrong, check server logs.' });
-  }
-};
-
-exports.deleteMovie = async (req, res) => {
-  try {
-    await Movie.deleteOne(req.body);
-    res.status(200).send({ message: 'Deletion successful' });
-  } catch (err) {
-    console.error('💥 💥', err);
-    res
-      .status(418)
+      .status(500)
       .send({ message: 'Something went wrong, check server logs.' });
   }
 };

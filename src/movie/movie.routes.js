@@ -1,18 +1,19 @@
 const { Router } = require('express');
+const { tokenAuth } = require('../middleware');
 const {
   addMovie,
-  listMovies,
-  updateMovie,
-  deleteMovie,
+  // listMovies,
+  // updateMovie,
+  // deleteMovie,
 } = require('./movie.controllers');
 const movieRouter = Router();
 
-movieRouter.post('/movie', addMovie);
+movieRouter.post('/movie', tokenAuth, addMovie);
 
-movieRouter.get('/movie', listMovies);
+// movieRouter.get('/movie', listMovies);
 
-movieRouter.patch('/movie', updateMovie);
+// movieRouter.patch('/movie', updateMovie);
 
-movieRouter.delete('/movie', deleteMovie);
+// movieRouter.delete('/movie', deleteMovie);
 
 module.exports = movieRouter;

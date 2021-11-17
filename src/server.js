@@ -1,4 +1,6 @@
-require('./db/connection');
+require('./MongoDB/connection');
+require('./MySQL/connection');
+require('./MySQL/associations');
 const express = require('express');
 const cors = require('cors');
 const userRouter = require('./user/user.routes');
