@@ -62,11 +62,9 @@ exports.listMovies = async (req, res) => {
     const movies = await Movie.findAll({ include: [Actor, Genre] });
 
     if (movies.length < 1) {
-      res
-        .status(500)
-        .send({
-          message: 'No movies found, please add some movies to the DB.',
-        });
+      res.status(500).send({
+        message: 'No movies found, please add some movies to the DB.',
+      });
       return;
     }
 
@@ -106,7 +104,100 @@ exports.findMovie = async (req, res) => {
 
 exports.updateMovie = async (req, res) => {
   try {
-    // TODO
+    const foundMovie = await Movie.findOne({
+      where: { movieTitle: req.body.update.title },
+      include: [Actor, Genre],
+    });
+
+    if (!foundMovie) {
+      res.status(500).send({ message: 'Movie not found.' });
+      return;
+    }
+
+    const { newInfo } = req.body;
+    const updates = {};
+
+    if (newInfo.title) updates.movieTitle = newInfo.title;
+    if (newInfo.rating) updates.rating = newInfo.rating;
+
+    updates.updatedBy = req.user.username;
+
+    foundMovie.set(updates);
+
+    let newActors = [];
+    let removeActors = [];
+    let newGenres = [];
+    let removeGenres = [];
+
+    if (newInfo.addActors) {
+      newActors = await Promise.all(
+        newInfo.addActors.map(actor =>
+          Actor.findOrCreate({
+            where: {
+              actorName: actor,
+            },
+          })
+        )
+      );
+
+      newActors.forEach(actor => foundMovie.addActor(actor[0]));
+    }
+
+    if (newInfo.removeActors) {
+      removeActors = await Promise.all(
+        newInfo.removeActors.map(actor =>
+          Actor.findOne({
+            where: {
+              actorName: actor,
+            },
+          })
+        )
+      );
+
+      removeActors.forEach(actor =>
+        foundMovie.removeActor(actor.dataValues.actorID)
+      );
+    }
+
+    if (newInfo.addGenres) {
+      newGenres = await Promise.all(
+        newInfo.addGenres.map(genre =>
+          Genre.findOrCreate({
+            where: {
+              genreName: genre,
+            },
+          })
+        )
+      );
+
+      newGenres.forEach(genre => foundMovie.addGenre(genre[0]));
+    }
+
+    if (newInfo.removeGenres) {
+      removeGenres = await Promise.all(
+        newInfo.removeGenres.map(genre =>
+          Genre.findOne({
+            where: {
+              genreName: genre,
+            },
+          })
+        )
+      );
+
+      removeGenres.forEach(genre =>
+        foundMovie.removeGenre(genre.dataValues.genreID)
+      );
+    }
+
+    await foundMovie.save();
+    const updatedObj = await Movie.findOne({
+      where: { movieTitle: newInfo.title || req.body.update.title },
+      include: [Actor, Genre],
+    });
+
+    const movieObj = formatResponse(updatedObj);
+
+    res.status(200).send({ message: 'Update successful: ', movieObj });
   } catch (err) {
     console.error('💥 💥', err);
     res
