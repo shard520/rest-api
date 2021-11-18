@@ -1,6 +1,7 @@
 const Movie = require('./movie.model');
 const Actor = require('../actor/actor.model');
 const Genre = require('../genre/genre.model');
+const { Op } = require('sequelize');
 
 exports.addMovie = async (req, res) => {
   try {
@@ -62,11 +63,9 @@ exports.listMovies = async (req, res) => {
     const movies = await Movie.findAll({ include: [Actor, Genre] });
 
     if (movies.length < 1) {
-      res
-        .status(500)
-        .send({
-          message: 'No movies found, please add some movies to the DB.',
-        });
+      res.status(500).send({
+        message: 'No movies found, please add some movies to the DB.',
+      });
       return;
     }
 
@@ -104,9 +103,202 @@ exports.findMovie = async (req, res) => {
   }
 };
 
+exports.findByActor = async (req, res) => {
+  try {
+    const actor = await Actor.findOne({ where: { actorName: req.body.actor } });
+
+    if (!actor) {
+      res.status(500).send({ message: 'Actor not found.' });
+      return;
+    }
+
+    // Get all movies that star actor
+    const movies = await Movie.findAll({
+      include: [
+        {
+          model: Actor,
+          required: true,
+          where: { actorID: actor.dataValues.actorID },
+        },
+        Genre,
+      ],
+    });
+
+    // Create a list of all actors that star in each movie found
+    const actorList = await Promise.all(movies.map(movie => movie.getActors()));
+
+    // Add the full cast list to the relevant movie
+    movies.forEach((movie, i) => (movie.Actors = actorList[i]));
+
+    const movieList = movies.map(movie => formatResponse(movie));
+    res.status(200).send(movieList);
+  } catch (err) {
+    console.error('💥 💥', err);
+    res
+      .status(500)
+      .send({ message: 'Something went wrong, check server logs.' });
+  }
+};
+
+exports.findByGenre = async (req, res) => {
+  try {
+    const genre = await Genre.findOne({ where: { genreName: req.body.genre } });
+
+    if (!genre) {
+      res.status(500).send({ message: 'Genre not found.' });
+      return;
+    }
+
+    // Get all movies that star genre
+    const movies = await Movie.findAll({
+      include: [
+        {
+          model: Genre,
+          required: true,
+          where: { genreID: genre.dataValues.genreID },
+        },
+        Actor,
+      ],
+    });
+
+    // Create a list of all genres that star in each movie found
+    const genreList = await Promise.all(movies.map(movie => movie.getGenres()));
+
+    // Add the full cast list to the relevant movie
+    movies.forEach((movie, i) => (movie.Genres = genreList[i]));
+
+    const movieList = movies.map(movie => formatResponse(movie));
+    res.status(200).send(movieList);
+  } catch (err) {
+    console.error('💥 💥', err);
+    res
+      .status(500)
+      .send({ message: 'Something went wrong, check server logs.' });
+  }
+};
+
+exports.findByRating = async (req, res) => {
+  try {
+    const movies = await Movie.findAll({
+      where: {
+        rating: { [Op.gte]: req.body.rating },
+      },
+      include: [Actor, Genre],
+    });
+
+    if (!movies) {
+      res.status(500).send({
+        message: `No movies found with a rating of ${req.body.rating} or higher.`,
+      });
+      return;
+    }
+
+    const movieList = movies.map(movie => formatResponse(movie));
+    res.status(200).send(movieList);
+  } catch (err) {
+    console.error('💥 💥', err);
+    res
+      .status(500)
+      .send({ message: 'Something went wrong, check server logs.' });
+  }
+};
+
 exports.updateMovie = async (req, res) => {
   try {
-    // TODO
+    const foundMovie = await Movie.findOne({
+      where: { movieTitle: req.body.update.title },
+      include: [Actor, Genre],
+    });
+
+    if (!foundMovie) {
+      res.status(500).send({ message: 'Movie not found.' });
+      return;
+    }
+
+    const { newInfo } = req.body;
+    const updates = {};
+
+    if (newInfo.title) updates.movieTitle = newInfo.title;
+    if (newInfo.rating) updates.rating = newInfo.rating;
+
+    updates.updatedBy = req.user.username;
+
+    foundMovie.set(updates);
+
+    let newActors = [];
+    let removeActors = [];
+    let newGenres = [];
+    let removeGenres = [];
+
+    if (newInfo.addActors) {
+      newActors = await Promise.all(
+        newInfo.addActors.map(actor =>
+          Actor.findOrCreate({
+            where: {
+              actorName: actor,
+            },
+          })
+        )
+      );
+
+      newActors.forEach(actor => foundMovie.addActor(actor[0]));
+    }
+
+    if (newInfo.removeActors) {
+      removeActors = await Promise.all(
+        newInfo.removeActors.map(actor =>
+          Actor.findOne({
+            where: {
+              actorName: actor,
+            },
+          })
+        )
+      );
+
+      removeActors.forEach(actor =>
+        foundMovie.removeActor(actor.dataValues.actorID)
+      );
+    }
+
+    if (newInfo.addGenres) {
+      newGenres = await Promise.all(
+        newInfo.addGenres.map(genre =>
+          Genre.findOrCreate({
+            where: {
+              genreName: genre,
+            },
+          })
+        )
+      );
+
+      newGenres.forEach(genre => foundMovie.addGenre(genre[0]));
+    }
+
+    if (newInfo.removeGenres) {
+      removeGenres = await Promise.all(
+        newInfo.removeGenres.map(genre =>
+          Genre.findOne({
+            where: {
+              genreName: genre,
+            },
+          })
+        )
+      );
+
+      removeGenres.forEach(genre =>
+        foundMovie.removeGenre(genre.dataValues.genreID)
+      );
+    }
+
+    await foundMovie.save();
+    const updatedObj = await Movie.findOne({
+      where: { movieTitle: newInfo.title || req.body.update.title },
+      include: [Actor, Genre],
+    });
+
+    const movieObj = formatResponse(updatedObj);
+
+    res.status(200).send({ message: 'Update successful: ', movieObj });
   } catch (err) {
     console.error('💥 💥', err);
     res
