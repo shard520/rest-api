@@ -47,20 +47,7 @@ exports.addMovie = async (req, res) => {
       await movie.update({ updatedBy: req.user.username });
 
     if (req.body.rating) {
-      const [rating] = await Rating.findOrCreate({
-        where: { postedBy: req.user.username },
-        defaults: {
-          movieID: movie.dataValues.id,
-          rating: req.body.rating,
-          postedBy: req.user.username,
-        },
-      });
-
-      // This allows user to update their rating
-      if (!rating._options.isNewRecord)
-        await rating.update({ rating: req.body.rating });
-
-      movie.addRating(rating);
+      await addOrUpdateRating(req, movie);
     }
 
     if (actors) {
@@ -249,7 +236,11 @@ exports.updateMovie = async (req, res) => {
     const updates = {};
 
     if (newInfo.title) updates.movieTitle = newInfo.title;
-    if (newInfo.rating) updates.rating = newInfo.rating;
+    if (newInfo.rating) {
+      // set new rating on req.body so update functions works correctly
+      req.body.rating = newInfo.rating;
+      await addOrUpdateRating(req, foundMovie);
+    }
 
     updates.updatedBy = req.user.username;
 
@@ -326,7 +317,7 @@ exports.updateMovie = async (req, res) => {
       include: [Actor, Genre],
     });
 
-    const movieObj = formatResponse(updatedObj);
+    const movieObj = await formatResponse(updatedObj);
 
     res.status(200).send({ message: 'Update successful: ', movieObj });
   } catch (err) {
@@ -370,8 +361,6 @@ const formatResponse = async movie => {
     updatedBy: movie.updatedBy,
     rating: await movie.rating,
   };
-  console.log('get', await movie.rating);
-  console.log('movi', movieObj);
 
   if (movie.Actors) {
     movie.Actors.forEach(actor => actors.push(actor.actorName));
@@ -384,3 +373,22 @@ const formatResponse = async movie => {
 
   return movieObj;
 };
+
+async function addOrUpdateRating(req, movie) {
+  const [rating] = await Rating.findOrCreate({
+    where: { postedBy: req.user.username },
+    defaults: {
+      movieID: movie.dataValues.id,
+      rating: req.body.rating,
+      postedBy: req.user.username,
+    },
+  });
+
+  // This allows user to update their rating
+  if (!rating.isNewRecord) {
+    await rating.set({ rating: req.body.rating });
+    await rating.save();
+  }
+
+  movie.addRating(rating);
+}
