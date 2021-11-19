@@ -12,7 +12,7 @@ const associations = async () => {
   Actor.belongsToMany(Movie, { through: 'MovieActors' });
 
   Movie.belongsToMany(Rating, { through: 'MovieRatings' });
-  Rating.hasOne(Movie, { foreignKey: 'movieID' });
+  Rating.belongsTo(Movie, { foreignKey: 'movieID' });
 
   await sequelize.sync();
 };

@@ -9,8 +9,15 @@ const Movie = sequelize.define('Movie', {
   },
   rating: {
     type: DataTypes.INTEGER,
-    validate: {
-      max: 10,
+    async get() {
+      const ratings = await this.getRatings();
+
+      const sum = ratings.reduce(
+        (acc, cur) => (acc += cur.dataValues.rating),
+        0
+      );
+
+      return sum / ratings.length;
     },
   },
   postedBy: {

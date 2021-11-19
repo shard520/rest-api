@@ -1,10 +1,11 @@
 const { DataTypes } = require('sequelize');
+const Movie = require('../movie/movie.model');
 const sequelize = require('../MySQL/connection');
 
 const Rating = sequelize.define('Rating', {
   movieID: {
     type: DataTypes.INTEGER,
-    references: { model: 'Movie', key: 'id' },
+    references: { model: Movie, key: 'id' },
     allowNull: false,
   },
   rating: {
@@ -16,6 +17,7 @@ const Rating = sequelize.define('Rating', {
   },
   postedBy: {
     type: DataTypes.STRING,
+    unique: true,
   },
 });
 

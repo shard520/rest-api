@@ -2,6 +2,7 @@ const Movie = require('./movie.model');
 const Actor = require('../actor/actor.model');
 const Genre = require('../genre/genre.model');
 const { Op } = require('sequelize');
+const Rating = require('../rating/rating.model');
 
 exports.addMovie = async (req, res) => {
   try {
@@ -37,9 +38,30 @@ exports.addMovie = async (req, res) => {
       );
     }
 
-    if (req.body.rating) movieObj.rating = req.body.rating;
+    const [movie] = await Movie.findOrCreate({
+      where: { movieTitle: req.body.title },
+      defaults: movieObj,
+    });
 
-    const movie = await Movie.create(movieObj);
+    if (!movie._options.isNewRecord)
+      await movie.update({ updatedBy: req.user.username });
+
+    if (req.body.rating) {
+      const [rating] = await Rating.findOrCreate({
+        where: { postedBy: req.user.username },
+        defaults: {
+          movieID: movie.dataValues.id,
+          rating: req.body.rating,
+          postedBy: req.user.username,
+        },
+      });
+
+      // This allows user to update their rating
+      if (!rating._options.isNewRecord)
+        await rating.update({ rating: req.body.rating });
+
+      movie.addRating(rating);
+    }
 
     if (actors) {
       actors.forEach(actor => movie.addActor(actor[0]));
@@ -69,7 +91,9 @@ exports.listMovies = async (req, res) => {
       return;
     }
 
-    const movieList = movies.map(movie => formatResponse(movie));
+    const movieList = await Promise.all(
+      movies.map(movie => formatResponse(movie))
+    );
 
     res.status(200).send(movieList);
   } catch (err) {
@@ -92,7 +116,7 @@ exports.findMovie = async (req, res) => {
       return;
     }
 
-    const movie = formatResponse(foundMovie);
+    const movie = await formatResponse(foundMovie);
 
     res.status(200).send(movie);
   } catch (err) {
@@ -130,7 +154,10 @@ exports.findByActor = async (req, res) => {
     // Add the full cast list to the relevant movie
     movies.forEach((movie, i) => (movie.Actors = actorList[i]));
 
-    const movieList = movies.map(movie => formatResponse(movie));
+    const movieList = await Promise.all(
+      movies.map(movie => formatResponse(movie))
+    );
+
     res.status(200).send(movieList);
   } catch (err) {
     console.error('💥 💥', err);
@@ -167,7 +194,10 @@ exports.findByGenre = async (req, res) => {
     // Add the full list of genres to the relevant movie
     movies.forEach((movie, i) => (movie.Genres = genreList[i]));
 
-    const movieList = movies.map(movie => formatResponse(movie));
+    const movieList = await Promise.all(
+      movies.map(movie => formatResponse(movie))
+    );
+
     res.status(200).send(movieList);
   } catch (err) {
     console.error('💥 💥', err);
@@ -329,7 +359,7 @@ exports.deleteMovie = async (req, res) => {
   }
 };
 
-const formatResponse = movie => {
+const formatResponse = async movie => {
   let actors = [];
   let genres = [];
 
@@ -338,7 +368,10 @@ const formatResponse = movie => {
     rating: movie.rating,
     postedBy: movie.postedBy,
     updatedBy: movie.updatedBy,
+    rating: await movie.rating,
   };
+  console.log('get', await movie.rating);
+  console.log('movi', movieObj);
 
   if (movie.Actors) {
     movie.Actors.forEach(actor => actors.push(actor.actorName));
