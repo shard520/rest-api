@@ -149,7 +149,7 @@ exports.findByGenre = async (req, res) => {
       return;
     }
 
-    // Get all movies that star genre
+    // Get all movies that contain genre
     const movies = await Movie.findAll({
       include: [
         {
@@ -161,10 +161,10 @@ exports.findByGenre = async (req, res) => {
       ],
     });
 
-    // Create a list of all genres that star in each movie found
+    // Create a list of all genres for each movie found
     const genreList = await Promise.all(movies.map(movie => movie.getGenres()));
 
-    // Add the full cast list to the relevant movie
+    // Add the full list of genres to the relevant movie
     movies.forEach((movie, i) => (movie.Genres = genreList[i]));
 
     const movieList = movies.map(movie => formatResponse(movie));
