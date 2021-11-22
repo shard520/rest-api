@@ -1,7 +1,9 @@
 const Movie = require('./movie.model');
 const Actor = require('../actor/actor.model');
 const Genre = require('../genre/genre.model');
+const Rating = require('../rating/rating.model');
 const { Op } = require('sequelize');
+const sequelize = require('../MySQL/connection');
 
 exports.addMovie = async (req, res) => {
   try {
@@ -10,6 +12,11 @@ exports.addMovie = async (req, res) => {
       postedBy: req.user.username,
       updatedBy: req.user.username,
     };
+
+    const [movie] = await Movie.findOrCreate({
+      where: { movieTitle: req.body.title },
+      defaults: movieObj,
+    });
 
     let actors, genres;
 
@@ -23,6 +30,8 @@ exports.addMovie = async (req, res) => {
           })
         )
       );
+
+      actors.forEach(actor => movie.addActor(actor[0]));
     }
 
     if (req.body.genres) {
@@ -35,18 +44,15 @@ exports.addMovie = async (req, res) => {
           })
         )
       );
-    }
 
-    if (req.body.rating) movieObj.rating = req.body.rating;
-
-    const movie = await Movie.create(movieObj);
-
-    if (actors) {
-      actors.forEach(actor => movie.addActor(actor[0]));
-    }
-
-    if (genres) {
       genres.forEach(genre => movie.addGenre(genre[0]));
+    }
+
+    if (!movie._options.isNewRecord)
+      await movie.update({ updatedBy: req.user.username });
+
+    if (req.body.rating) {
+      await addOrUpdateRating(req, movie);
     }
 
     res.status(200).send({ message: 'Movie created successfully.' });
@@ -69,7 +75,9 @@ exports.listMovies = async (req, res) => {
       return;
     }
 
-    const movieList = movies.map(movie => formatResponse(movie));
+    const movieList = await Promise.all(
+      movies.map(movie => formatResponse(movie))
+    );
 
     res.status(200).send(movieList);
   } catch (err) {
@@ -92,7 +100,7 @@ exports.findMovie = async (req, res) => {
       return;
     }
 
-    const movie = formatResponse(foundMovie);
+    const movie = await formatResponse(foundMovie);
 
     res.status(200).send(movie);
   } catch (err) {
@@ -130,7 +138,10 @@ exports.findByActor = async (req, res) => {
     // Add the full cast list to the relevant movie
     movies.forEach((movie, i) => (movie.Actors = actorList[i]));
 
-    const movieList = movies.map(movie => formatResponse(movie));
+    const movieList = await Promise.all(
+      movies.map(movie => formatResponse(movie))
+    );
+
     res.status(200).send(movieList);
   } catch (err) {
     console.error('💥 💥', err);
@@ -149,7 +160,7 @@ exports.findByGenre = async (req, res) => {
       return;
     }
 
-    // Get all movies that star genre
+    // Get all movies that contain genre
     const movies = await Movie.findAll({
       include: [
         {
@@ -161,13 +172,16 @@ exports.findByGenre = async (req, res) => {
       ],
     });
 
-    // Create a list of all genres that star in each movie found
+    // Create a list of all genres for each movie found
     const genreList = await Promise.all(movies.map(movie => movie.getGenres()));
 
-    // Add the full cast list to the relevant movie
+    // Add the full list of genres to the relevant movie
     movies.forEach((movie, i) => (movie.Genres = genreList[i]));
 
-    const movieList = movies.map(movie => formatResponse(movie));
+    const movieList = await Promise.all(
+      movies.map(movie => formatResponse(movie))
+    );
+
     res.status(200).send(movieList);
   } catch (err) {
     console.error('💥 💥', err);
@@ -181,10 +195,11 @@ exports.findByRating = async (req, res) => {
   try {
     const movies = await Movie.findAll({
       where: {
-        rating: { [Op.gte]: req.body.rating },
+        averageRating: { [Op.gte]: req.body.rating },
       },
       include: [Actor, Genre],
     });
+    console.log(movies);
 
     if (!movies) {
       res.status(500).send({
@@ -193,7 +208,9 @@ exports.findByRating = async (req, res) => {
       return;
     }
 
-    const movieList = movies.map(movie => formatResponse(movie));
+    const movieList = await Promise.all(
+      movies.map(movie => formatResponse(movie))
+    );
     res.status(200).send(movieList);
   } catch (err) {
     console.error('💥 💥', err);
@@ -219,7 +236,11 @@ exports.updateMovie = async (req, res) => {
     const updates = {};
 
     if (newInfo.title) updates.movieTitle = newInfo.title;
-    if (newInfo.rating) updates.rating = newInfo.rating;
+    if (newInfo.rating) {
+      // set new rating on req.body so update functions works correctly
+      req.body.rating = newInfo.rating;
+      await addOrUpdateRating(req, foundMovie);
+    }
 
     updates.updatedBy = req.user.username;
 
@@ -296,7 +317,7 @@ exports.updateMovie = async (req, res) => {
       include: [Actor, Genre],
     });
 
-    const movieObj = formatResponse(updatedObj);
+    const movieObj = await formatResponse(updatedObj);
 
     res.status(200).send({ message: 'Update successful: ', movieObj });
   } catch (err) {
@@ -329,7 +350,7 @@ exports.deleteMovie = async (req, res) => {
   }
 };
 
-const formatResponse = movie => {
+const formatResponse = async movie => {
   let actors = [];
   let genres = [];
 
@@ -338,6 +359,7 @@ const formatResponse = movie => {
     rating: movie.rating,
     postedBy: movie.postedBy,
     updatedBy: movie.updatedBy,
+    rating: await movie.rating,
   };
 
   if (movie.Actors) {
@@ -351,3 +373,26 @@ const formatResponse = movie => {
 
   return movieObj;
 };
+
+async function addOrUpdateRating(req, movie) {
+  const [rating] = await Rating.findOrCreate({
+    where: { postedBy: req.user.username, movieID: movie.dataValues.id },
+    defaults: {
+      rating: req.body.rating,
+      postedBy: req.user.username,
+    },
+  });
+
+  // This allows user to update their rating
+  if (!rating.isNewRecord) {
+    await rating.update({ rating: req.body.rating });
+  }
+
+  movie.addRating(rating);
+
+  const [[avgRating]] = await sequelize.query(
+    `SELECT AVG(rating) AS avg FROM Ratings WHERE movieID=${movie.dataValues.id};`
+  );
+
+  await movie.update({ averageRating: avgRating.avg });
+}
