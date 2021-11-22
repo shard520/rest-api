@@ -1,5 +1,4 @@
 const { DataTypes } = require('sequelize');
-const { set } = require('../MySQL/connection');
 const sequelize = require('../MySQL/connection');
 
 const Movie = sequelize.define('Movie', {

@@ -199,7 +199,6 @@ exports.findByRating = async (req, res) => {
       },
       include: [Actor, Genre],
     });
-    console.log(movies);
 
     if (!movies) {
       res.status(500).send({
