@@ -17,7 +17,6 @@ const Rating = sequelize.define('Rating', {
   },
   postedBy: {
     type: DataTypes.STRING,
-    unique: true,
   },
 });
 

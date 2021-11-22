@@ -1,4 +1,5 @@
 const { DataTypes } = require('sequelize');
+const { set } = require('../MySQL/connection');
 const sequelize = require('../MySQL/connection');
 
 const Movie = sequelize.define('Movie', {
@@ -8,7 +9,7 @@ const Movie = sequelize.define('Movie', {
     unique: true,
   },
   rating: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.VIRTUAL,
     async get() {
       const ratings = await this.getRatings();
 
@@ -19,6 +20,10 @@ const Movie = sequelize.define('Movie', {
 
       return sum / ratings.length;
     },
+    validate: { max: 10 },
+  },
+  averageRating: {
+    type: DataTypes.FLOAT,
   },
   postedBy: {
     type: DataTypes.STRING,
