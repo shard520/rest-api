@@ -355,7 +355,6 @@ const formatResponse = async movie => {
 
   const movieObj = {
     title: movie.movieTitle,
-    rating: movie.rating,
     postedBy: movie.postedBy,
     updatedBy: movie.updatedBy,
     rating: await movie.rating,
