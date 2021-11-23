@@ -18,25 +18,16 @@ exports.addUser = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const token = await req.user.generateAuthToken();
-    res.status(200).send({ user: req.user, token });
+    res
+      .status(200)
+      .send({
+        user: { username: req.user.username, email: req.user.email },
+        token,
+      });
   } catch (err) {
     console.error('💥 💥', err);
     res
       .status(500)
-      .send({ message: 'Something went wrong, check server logs.' });
-  }
-};
-
-exports.listUsers = async (req, res) => {
-  try {
-    const userList = await User.find({});
-    const usernames = userList.map(user => user.username);
-
-    res.status(200).send(usernames);
-  } catch (err) {
-    console.error('💥 💥', err);
-    res
-      .status(418)
       .send({ message: 'Something went wrong, check server logs.' });
   }
 };
