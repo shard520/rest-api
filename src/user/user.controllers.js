@@ -5,8 +5,8 @@ exports.addUser = async (req, res) => {
     const newUser = new User(req.body);
     const token = await newUser.generateAuthToken();
     await newUser.save();
-    const { username = newUsername } = newUser;
-    res.status(200).send({ message: 'Success', username, token });
+    const { username, email } = newUser;
+    res.status(200).send({ message: 'Success', username, email, token });
   } catch (err) {
     console.error('💥 💥', err);
     res
