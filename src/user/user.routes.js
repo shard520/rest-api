@@ -12,8 +12,8 @@ userRouter.post('/user', hashPassword, addUser);
 userRouter.post('/login', comparePasswords, login);
 userRouter.get('/token', tokenAuth, login);
 
-userRouter.patch('/user', updateUser);
+userRouter.patch('/user', tokenAuth, updateUser);
 
-userRouter.delete('/user', deleteUser);
+userRouter.delete('/user', tokenAuth, deleteUser);
 
 module.exports = userRouter;

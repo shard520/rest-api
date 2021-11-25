@@ -1,3 +1,4 @@
+const { hashPassword } = require('../middleware');
 const User = require('./user.model');
 
 exports.addUser = async (req, res) => {
@@ -18,12 +19,10 @@ exports.addUser = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const token = await req.user.generateAuthToken();
-    res
-      .status(200)
-      .send({
-        user: { username: req.user.username, email: req.user.email },
-        token,
-      });
+    res.status(200).send({
+      user: { username: req.user.username, email: req.user.email },
+      token,
+    });
   } catch (err) {
     console.error('💥 💥', err);
     res
@@ -40,11 +39,14 @@ exports.updateUser = async (req, res) => {
 
     if (newInfo.username) doc.username = newInfo.username;
     if (newInfo.email) doc.email = newInfo.email;
-    if (newInfo.password) doc.password = newInfo.password;
+    if (newInfo.password) {
+      req.body.password = newInfo.password;
+      doc.password = await hashPassword(req, res, () => null);
+    }
 
     await doc.save();
 
-    res.status(200).send({ message: 'Update successful' });
+    res.status(200).send({ message: 'Update successful', doc });
   } catch (err) {
     console.error('💥 💥', err);
     res
