@@ -8,7 +8,7 @@ const movieRouter = require('./movie/movie.routes');
 const actorRouter = require('./actor/actor.routes');
 const genreRouter = require('./genre/genre.routes');
 const app = express();
-const port = process.PORT || 5000;
+const port = process.env.PORT || 5000;
 
 app.use(express.json());
 app.use(cors());
