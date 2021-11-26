@@ -233,6 +233,7 @@ exports.updateMovie = async (req, res) => {
 
     const { newInfo } = req.body;
     const updates = {};
+    console.log(newInfo);
 
     if (newInfo.title) updates.movieTitle = newInfo.title;
     if (newInfo.rating) {
@@ -250,7 +251,7 @@ exports.updateMovie = async (req, res) => {
     let newGenres = [];
     let removeGenres = [];
 
-    if (newInfo.addActors) {
+    if (newInfo.addActors.length > 0) {
       newActors = await Promise.all(
         newInfo.addActors.map(actor =>
           Actor.findOrCreate({
@@ -264,7 +265,7 @@ exports.updateMovie = async (req, res) => {
       newActors.forEach(actor => foundMovie.addActor(actor[0]));
     }
 
-    if (newInfo.removeActors) {
+    if (newInfo.removeActors.length > 0) {
       removeActors = await Promise.all(
         newInfo.removeActors.map(actor =>
           Actor.findOne({
@@ -280,7 +281,7 @@ exports.updateMovie = async (req, res) => {
       );
     }
 
-    if (newInfo.addGenres) {
+    if (newInfo.addGenres.length > 0) {
       newGenres = await Promise.all(
         newInfo.addGenres.map(genre =>
           Genre.findOrCreate({
@@ -294,7 +295,7 @@ exports.updateMovie = async (req, res) => {
       newGenres.forEach(genre => foundMovie.addGenre(genre[0]));
     }
 
-    if (newInfo.removeGenres) {
+    if (newInfo.removeGenres.length > 0) {
       removeGenres = await Promise.all(
         newInfo.removeGenres.map(genre =>
           Genre.findOne({

@@ -7,6 +7,7 @@ const Rating = sequelize.define('Rating', {
     type: DataTypes.INTEGER,
     references: { model: Movie, key: 'id' },
     allowNull: false,
+    onDelete: 'cascade',
   },
   rating: {
     type: DataTypes.INTEGER,
